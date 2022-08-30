@@ -15,7 +15,8 @@
   },
   "scripts": {
     "start": "esr src/cli.ts",
-    "build": "esbuild --bundle --platform=node src/cli.ts --outfile=dist/index.js"
+    "build": "esbuild --bundle --platform=node src/cli.ts --outfile=dist/index.js",
+    "npm-publish": "npm publish --access public"
   },
   "bin": {
     "upload-photos": "./dist/index.js"
