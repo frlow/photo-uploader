@@ -15,8 +15,10 @@ export const loadGDriveFiles = async (): Promise<GDriveCacheItem[]> => {
     .map((line) => line.split(' '))
     .map((line) => ({ name: line[1], size: parseInt(line[0]) }))
 }
-export const updateGDriveCache = async () => {
-  const files = await loadGDriveFiles()
+export const updateGDriveCache = async () =>
+  setGDriveCache(await loadGDriveFiles())
+
+export const setGDriveCache = (files: GDriveCacheItem[]) => {
   fs.writeFileSync(gDriveCacheFile, JSON.stringify(files, null, 2), 'utf8')
 }
 
@@ -66,9 +68,6 @@ export const getImagesToUpload = async () => {
   if (!config) return
   const gDriveFiles = getGDriveCache()
   if (!gDriveFiles) return
-  const targetFiles = (await asyncGlob(
-    `${path.resolve(config.target)}/**/*`
-  )) as string[]
   const sourceFiles = (await asyncGlob(`${config.source}/**/*`)) as string[]
   const toUpload: UploadItem[] = []
   const fileTypes = config.fileTypes
@@ -104,9 +103,15 @@ export const uploadImages = async (
       }) Processing: ${item.source}`
     )
     if (item.gDrive) {
-      console.log('Uploading to GDrive')
+      console.log(`Uploading to GDrive (${item.gDrive})`)
+      const command = `rclone copyto "${item.source}" "gdrive:${item.gDrive}"`
+      const result = await execCommand(command)
+      if (result) console.error(result)
+      const cache = getGDriveCache()?.concat({ name: item.gDrive, size: -1 })
+      if (cache) setGDriveCache(cache)
     }
     if (item.target) {
+      console.log(`Uploading to Target (${item.target})`)
       if (!fs.existsSync(path.dirname(item.target)))
         fs.mkdirSync(path.dirname(item.target), { recursive: true })
       fs.copyFileSync(item.source, item.target)

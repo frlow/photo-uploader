@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 import {
   Config,
   getConfig,
@@ -82,6 +83,7 @@ const loop = async () => {
     const result = await asyncQuestion(question)
     switch (result) {
       case 'u':
+        await updateGDriveCache()
         break
       case 'c':
         setConfig(await configureSettings())

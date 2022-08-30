@@ -1,5 +1,5 @@
 {
-  "name": "photo-uploader",
+  "name": "@frlow/photo-uploader",
   "version": "1.0.0",
   "main": "index.js",
   "license": "MIT",
@@ -14,6 +14,10 @@
     "moment": "^2.29.4"
   },
   "scripts": {
-    "start": "esr src/cli.ts"
+    "start": "esr src/cli.ts",
+    "build": "esbuild --bundle --platform=node src/cli.ts --outfile=dist/index.js"
+  },
+  "bin": {
+    "upload-photos": "./dist/index.js"
   }
 }
