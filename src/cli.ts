@@ -55,15 +55,15 @@ const validate = async () => {
   const errors = await validateTargets()
   if (errors.length > 0) {
     errors.forEach((er) => console.error(`Error: ${er}`))
-    rl.close()
-    process.exit()
+    return false
   }
+  return true
 }
 
 const upload = async (
   getToUploadFunc: () => Promise<UploadItem[] | undefined>
 ) => {
-  await validate()
+  if (!(await validate())) return false
   continueRunning = true
   const toUpload = await getToUploadFunc()
   if (!toUpload) return
@@ -76,6 +76,7 @@ const upload = async (
       (msg) => console.log(msg),
       () => continueRunning
     )
+  return true
 }
 let continueRunning = true
 const loop = async () => {
@@ -89,7 +90,7 @@ const loop = async () => {
     if (key && key.name == 'q') continueRunning = false
   })
 
-  while (true) {
+  main: while (true) {
     const question = `Select command:
 (u) - Update Google Drive Cache
 (c) - Configure settings
@@ -107,20 +108,19 @@ const loop = async () => {
         setConfig(await configureSettings())
         break
       case 's':
-        await upload(getImagesToUpload)
+        if (!(await upload(getImagesToUpload))) break main
         break
       case 'd':
-        await upload(getImagesToUploadFromCopyDirs)
+        if (!(await upload(getImagesToUploadFromCopyDirs))) break main
         break
       case 'a':
         const toUpload = await getImagesToUpload()
         const toCopy = await getImagesToUploadFromCopyDirs()
         if (!toCopy || !toUpload) break
-        await upload(async () => toUpload.concat(toCopy))
+        if (!(await upload(async () => toUpload.concat(toCopy)))) break main
         break
       case 'q':
-        process.exit()
-        break
+        break main
       default:
         break
     }
