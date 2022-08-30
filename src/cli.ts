@@ -66,13 +66,10 @@ const loop = async () => {
     console.log('Done!')
   }
   if (!hasConfig()) setConfig(await configureSettings())
-
-  const config = getConfig()!
-  const files = await new Promise((resolve) => {
-    glob(config.source + '/**/*', {}, function (re, files) {
-      resolve(files)
-    })
+  process.stdin.on('keypress', (chunk, key) => {
+    if (key && key.name == 'q') continueRunning = false
   })
+  let continueRunning = true
   while (true) {
     const question = `Select command:
 (u) - Update Google Drive Cache
@@ -90,13 +87,18 @@ const loop = async () => {
         break
       case 's':
         await validate()
+        continueRunning = true
         const toUpload = await getImagesToUpload()
         if (!toUpload) break
         const response = await asyncQuestion(
           `Do you want to upload ${toUpload?.length} files? (y/N): `
         )
         if (response === 'y')
-          await uploadImages(toUpload, (msg) => console.log(msg))
+          await uploadImages(
+            toUpload,
+            (msg) => console.log(msg),
+            () => continueRunning
+          )
         break
       case 'q':
         process.exit()

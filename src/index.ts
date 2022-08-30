@@ -93,10 +93,12 @@ export const getImagesToUpload = async () => {
 
 export const uploadImages = async (
   toUpload: UploadItem[],
-  log: (msg: string) => void
+  log: (msg: string) => void,
+  shouldContinue: () => boolean
 ) => {
   const pad = `${toUpload.length}`.length
   for (const item of toUpload) {
+    if (!shouldContinue()) return
     log(
       `(${toUpload.indexOf(item).toString().padStart(pad, '0')}/${
         toUpload.length
