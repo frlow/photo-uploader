@@ -1,17 +1,13 @@
 #!/usr/bin/env node
 import {
-  Config,
-  getConfig,
   getImagesToUpload,
   getImagesToUploadFromCopyDirs,
-  hasCache,
-  hasConfig,
-  setConfig,
-  updateGDriveCache,
   uploadImages,
   UploadItem,
   validateTargets,
 } from './index'
+import { Config, getConfig, hasConfig, setConfig } from './config'
+import { hasCache, updateGDriveCache } from './cache'
 
 const readline = require('readline')
 const rl = readline.createInterface({
@@ -67,6 +63,10 @@ const upload = async (
   continueRunning = true
   const toUpload = await getToUploadFunc()
   if (!toUpload) return
+  if (toUpload.length === 0) {
+    console.log('All files have been uploaded!')
+    return true
+  }
   const response = await asyncQuestion(
     `Do you want to upload ${toUpload?.length} files? (y/N): `
   )
@@ -94,6 +94,7 @@ const loop = async () => {
     const question = `Select command:
 (u) - Update Google Drive Cache
 (c) - Configure settings
+(m) - Manage additional copy dirs
 (s) - Sync files
 (d) - Copy dirs
 (a) - Copy all, both sync and dirs
@@ -118,6 +119,45 @@ const loop = async () => {
         const toCopy = await getImagesToUploadFromCopyDirs()
         if (!toCopy || !toUpload) break
         if (!(await upload(async () => toUpload.concat(toCopy)))) break main
+        break
+      case 'm':
+        manage: while (true) {
+          const config = getConfig()
+          if (!config) break
+          const mRes = await asyncQuestion(`Select command:
+(l)  - List copy dirs
+(a)  - Add copy dir
+(d x) - Delete copy dir number x
+(q)  - Done
+`)
+          switch (mRes.split(' ')[0]) {
+            case 'q':
+              break manage
+            case 'l':
+              ;(config.copyDirs || []).forEach((cd, i) => {
+                console.log(`[${i}]
+  Source: ${cd.source}
+  Target: ${cd.target}
+  GDrive: ${cd.gDriveDir}`)
+              })
+              break
+            case 'd':
+              try {
+                const number = parseInt(mRes.split(' ')[1])
+                config.copyDirs?.splice(number, 1)
+                setConfig(config)
+              } catch {}
+              break
+            case 'a':
+              const source = await asyncQuestion('Source: ')
+              const target = await asyncQuestion('Target: ')
+              const gDrive = await asyncQuestion('GDrive: ')
+              if (!source || !target || !gDrive) break
+              config.copyDirs?.push({ source, target, gDriveDir: gDrive })
+              setConfig(config)
+              break
+          }
+        }
         break
       case 'q':
         break main
