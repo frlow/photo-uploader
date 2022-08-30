@@ -17,7 +17,7 @@
     "start": "esr src/cli.ts",
     "build": "esbuild --bundle --platform=node src/cli.ts --outfile=dist/index.js",
     "npm-publish": "npm publish --access public",
-    "local": "yarn build && npm pack && npm i -g --force frlow-photo-uploader-1.0.0.tgz && rm frlow-photo-uploader-1.0.0.tgz"
+    "local": "yarn build && npm pack && npm i -g --force frlow-photo-uploader*.tgz && rm frlow-photo-uploader*.tgz"
   },
   "bin": {
     "upload-photos": "./dist/index.js"
