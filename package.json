@@ -1,0 +1,19 @@
+{
+  "name": "photo-uploader",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^18.7.14",
+    "typescript": "^4.8.2",
+    "esbuild-runner": "^2.2.1",
+    "esbuild": "^0.15.6",
+    "prettier": "^2.7.1",
+    "glob": "^8.0.3",
+    "@types/glob": "^7.2.0",
+    "moment": "^2.29.4"
+  },
+  "scripts": {
+    "start": "esr src/cli.ts"
+  }
+}
