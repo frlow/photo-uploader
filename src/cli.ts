@@ -3,14 +3,15 @@ import {
   Config,
   getConfig,
   getImagesToUpload,
+  getImagesToUploadFromCopyDirs,
   hasCache,
   hasConfig,
   setConfig,
   updateGDriveCache,
   uploadImages,
+  UploadItem,
   validateTargets,
 } from './index'
-import glob from 'glob'
 
 const readline = require('readline')
 const rl = readline.createInterface({
@@ -59,6 +60,24 @@ const validate = async () => {
   }
 }
 
+const upload = async (
+  getToUploadFunc: () => Promise<UploadItem[] | undefined>
+) => {
+  await validate()
+  continueRunning = true
+  const toUpload = await getToUploadFunc()
+  if (!toUpload) return
+  const response = await asyncQuestion(
+    `Do you want to upload ${toUpload?.length} files? (y/N): `
+  )
+  if (response === 'y')
+    await uploadImages(
+      toUpload,
+      (msg) => console.log(msg),
+      () => continueRunning
+    )
+}
+let continueRunning = true
 const loop = async () => {
   if (!hasCache()) {
     console.log('Loading Google Drive files...')
@@ -69,12 +88,14 @@ const loop = async () => {
   process.stdin.on('keypress', (chunk, key) => {
     if (key && key.name == 'q') continueRunning = false
   })
-  let continueRunning = true
+
   while (true) {
     const question = `Select command:
 (u) - Update Google Drive Cache
 (c) - Configure settings
 (s) - Sync files
+(d) - Copy dirs
+(a) - Copy all, both sync and dirs
 (q) - Quit
 `
     const result = await asyncQuestion(question)
@@ -86,19 +107,16 @@ const loop = async () => {
         setConfig(await configureSettings())
         break
       case 's':
-        await validate()
-        continueRunning = true
+        await upload(getImagesToUpload)
+        break
+      case 'd':
+        await upload(getImagesToUploadFromCopyDirs)
+        break
+      case 'a':
         const toUpload = await getImagesToUpload()
-        if (!toUpload) break
-        const response = await asyncQuestion(
-          `Do you want to upload ${toUpload?.length} files? (y/N): `
-        )
-        if (response === 'y')
-          await uploadImages(
-            toUpload,
-            (msg) => console.log(msg),
-            () => continueRunning
-          )
+        const toCopy = await getImagesToUploadFromCopyDirs()
+        if (!toCopy || !toUpload) break
+        await upload(async () => toUpload.concat(toCopy))
         break
       case 'q':
         process.exit()

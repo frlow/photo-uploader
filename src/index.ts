@@ -35,6 +35,11 @@ export type Config = {
   target: string
   gDriveDir: string
   fileTypes: string
+  copyDirs?: {
+    source: string
+    target: string
+    gDriveDir: string
+  }[]
 }
 const configFile = 'config.json'
 export const hasConfig = () => fs.existsSync(configFile)
@@ -60,9 +65,10 @@ export const validateTargets = () => {
   }
   return errors
 }
-export const asyncGlob = async (pattern: string) =>
+export const asyncGlob = async (pattern: string): Promise<string[]> =>
   new Promise((resolve) => glob(pattern, (er, files) => resolve(files)))
-type UploadItem = { source: string; gDrive?: string; target?: string }
+export type UploadItem = { source: string; gDrive?: string; target?: string }
+
 export const getImagesToUpload = async () => {
   const config = getConfig()
   if (!config) return
@@ -90,7 +96,13 @@ export const getImagesToUpload = async () => {
   }
   return toUpload
 }
-
+const copyToGDrive = async (source: string, gDrive: string) => {
+  const command = `rclone copyto "${source}" "gdrive:${gDrive}"`
+  const result = await execCommand(command)
+  if (result) console.error(result)
+  const cache = getGDriveCache()?.concat({ name: gDrive, size: -1 })
+  if (cache) setGDriveCache(cache)
+}
 export const uploadImages = async (
   toUpload: UploadItem[],
   log: (msg: string) => void,
@@ -106,11 +118,7 @@ export const uploadImages = async (
     )
     if (item.gDrive) {
       console.log(`Uploading to GDrive (${item.gDrive})`)
-      const command = `rclone copyto "${item.source}" "gdrive:${item.gDrive}"`
-      const result = await execCommand(command)
-      if (result) console.error(result)
-      const cache = getGDriveCache()?.concat({ name: item.gDrive, size: -1 })
-      if (cache) setGDriveCache(cache)
+      await copyToGDrive(item.source, item.gDrive)
     }
     if (item.target) {
       console.log(`Uploading to Target (${item.target})`)
@@ -121,4 +129,29 @@ export const uploadImages = async (
       fs.utimesSync(item.target, stat.atime, stat.mtime)
     }
   }
+}
+
+export const getImagesToUploadFromCopyDirs = async (): Promise<
+  UploadItem[] | undefined
+> => {
+  const toUpload: UploadItem[] = []
+  const config = getConfig()
+  if (!config) return
+  const dirs = config.copyDirs
+  for (const dir of dirs || []) {
+    const files = await asyncGlob(`${dir.source}/**/*`)
+    for (const file of files) {
+      const gDriveFiles = getGDriveCache()
+      if (!gDriveFiles) return
+      const relative = path.relative(dir.source, file)
+      const gDrivePath = path.join(dir.gDriveDir, relative)
+      const targetPath = path.join(dir.target, relative)
+      const upload: UploadItem = { source: file }
+      if (!gDriveFiles.some((d) => d.name === gDrivePath))
+        upload.gDrive = gDrivePath
+      if (!fs.existsSync(targetPath)) upload.target = targetPath
+      if (upload.target || upload.gDrive) toUpload.push(upload)
+    }
+  }
+  return toUpload
 }
